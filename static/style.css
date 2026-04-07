@@ -1,0 +1,115 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Body */
+body {
+    height: 100vh;
+    background: linear-gradient(135deg, #72a4cf, #66999c);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Main Container */
+.container {
+    background: #ffffff;
+    padding: 35px;
+    border-radius: 15px;
+    width: 420px;
+    text-align: center;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+/* Heading */
+h2 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* File Input */
+input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    margin: 15px 0;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+input[type="file"]:hover {
+    border-color: #2e4458;
+}
+
+/* Button */
+button {
+    width: 100%;
+    padding: 12px;
+    background: #2a445a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #23444d;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* Result Section */
+.result {
+    margin-top: 25px;
+    text-align: left;
+}
+
+/* Sub Headings */
+h3 {
+    margin-top: 15px;
+    color: #444;
+}
+
+/* Output Box */
+p {
+    background: #f1f5f9;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+}
+
+/* Optional: Sentiment Colors */
+p.positive {
+    background: #e6fffa;
+    color: #199f79;
+}
+
+p.negative {
+    background: #ffe4e6;
+    color: #b91c1c;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

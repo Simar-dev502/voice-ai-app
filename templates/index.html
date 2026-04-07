@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Transcription App</title>
+
+    <!-- CSS Link -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>🎤 Voice Transcription App</h2>
+
+    <!-- Upload Form -->
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="audio" accept="audio/*" required>
+        <button type="submit">Upload & Transcribe</button>
+</form>
+
+
+
+    <!-- Results Section -->
+    <div class="result">
+
+        {% if transcription %}
+            <h3>📝 Transcription:</h3>
+            <p>{{ transcription }}</p>
+        {% endif %}
+
+        {% if sentiment %}
+            <h3>📊 Sentiment:</h3>
+            <p class="{{ 'positive' if sentiment.lower().strip() == 'positive' else 'negative' }}">
+    {{ sentiment }}
+</p>
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+</html>
