@@ -2,4 +2,5 @@ flask
 openai-whisper
 gunicorn
 torch==2.14.0+cpu
+numpy
 --extra-index-url https://download.pytorch.org/whl/cpu
