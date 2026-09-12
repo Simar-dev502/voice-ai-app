@@ -1,48 +1,689 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Transcription App</title>
+    <title>Voice AI Studio</title>
 
-    <!-- CSS Link -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
 
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #172033;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            border-bottom: 1px solid #e7eaf0;
+            padding: 18px 7%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .logo span {
+            color: #635bff;
+        }
+
+        .status {
+            font-size: 13px;
+            color: #16a34a;
+            background: #ecfdf3;
+            padding: 7px 12px;
+            border-radius: 20px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 45px 20px 25px;
+        }
+
+        .hero h1 {
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .hero h1 span {
+            color: #635bff;
+        }
+
+        .hero p {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1050px;
+            margin: auto;
+            padding-bottom: 50px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e7eaf0;
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(20, 30, 60, 0.05);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: #efefff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+        }
+
+        .card h2 {
+            font-size: 19px;
+        }
+
+        .card-subtitle {
+            color: #8a93a3;
+            font-size: 13px;
+            margin-top: 3px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #cfd3e0;
+            border-radius: 15px;
+            padding: 35px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #635bff;
+            background: #f7f7ff;
+        }
+
+        .upload-icon {
+            font-size: 38px;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .drop-zone small {
+            color: #8a93a3;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 12px;
+            color: #635bff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn {
+            width: 100%;
+            border: none;
+            border-radius: 11px;
+            padding: 13px 18px;
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .primary {
+            background: #635bff;
+            color: white;
+        }
+
+        .primary:hover {
+            background: #5148e8;
+        }
+
+        .record-btn {
+            background: #fff0f0;
+            color: #dc2626;
+            border: 1px solid #ffd5d5;
+        }
+
+        .record-btn.recording {
+            background: #dc2626;
+            color: white;
+        }
+
+        .record-info {
+            text-align: center;
+            margin-top: 12px;
+            color: #8a93a3;
+            font-size: 13px;
+        }
+
+        .textarea {
+            width: 100%;
+            min-height: 155px;
+            resize: vertical;
+            border: 1px solid #dfe3eb;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 15px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .textarea:focus {
+            border-color: #635bff;
+        }
+
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .voice-controls button {
+            flex: 1;
+        }
+
+        .secondary {
+            background: #eef0f5;
+            color: #303746;
+        }
+
+        .results {
+            margin-top: 22px;
+        }
+
+        .result-box {
+            background: #f8f9fc;
+            border-radius: 13px;
+            padding: 18px;
+            margin-top: 12px;
+            border: 1px solid #e7eaf0;
+        }
+
+        .result-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .transcription {
+            line-height: 1.6;
+            color: #4b5563;
+        }
+
+        .sentiment {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .positive {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .negative {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .neutral {
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .empty-state {
+            color: #9ca3af;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .footer {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 13px;
+            padding: 20px;
+        }
+
+        @media (max-width: 750px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h1 {
+                font-size: 30px;
+            }
+
+            .navbar {
+                padding: 16px 5%;
+            }
+
+            .container {
+                width: 94%;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
+<nav class="navbar">
+    <div class="logo">🎙️ <span>Voice</span> AI</div>
+    <div class="status">● AI Ready</div>
+</nav>
+
+<section class="hero">
+    <h1>Turn Your <span>Voice Into Text</span></h1>
+    <p>Record, upload, transcribe and convert text to speech — all in one place.</p>
+</section>
+
 <div class="container">
 
-    <h2>🎤 Voice Transcription App</h2>
+    <div class="grid">
 
-    <!-- Upload Form -->
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="audio" accept="audio/*" required>
-        <button type="submit">Upload & Transcribe</button>
-</form>
+        <!-- AUDIO INPUT -->
+        <div class="card">
+
+            <div class="card-header">
+                <div class="icon">🎤</div>
+                <div>
+                    <h2>Voice Input</h2>
+                    <div class="card-subtitle">
+                        Upload an audio file or speak directly
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drag & Drop -->
+            <form id="uploadForm"
+                  action="/upload"
+                  method="post"
+                  enctype="multipart/form-data">
+
+                <div class="drop-zone" id="dropZone">
+
+                    <div class="upload-icon">📁</div>
+
+                    <strong>Drag & Drop your audio here</strong>
+
+                    <small>or click to browse your device</small>
+
+                    <div class="file-name" id="fileName"></div>
+
+                </div>
+
+                <input
+                    type="file"
+                    id="fileInput"
+                    name="audio"
+                    accept="audio/*">
+
+                <button class="btn primary" type="submit">
+                    ✨ Upload & Transcribe
+                </button>
+
+            </form>
+
+            <!-- Browser Recording -->
+
+            <button class="btn record-btn" id="recordBtn">
+                🎙️ Start Recording
+            </button>
+
+            <div class="record-info" id="recordInfo">
+                Click the button and start speaking
+            </div>
+
+        </div>
 
 
+        <!-- TEXT TO SPEECH -->
+        <div class="card">
 
-    <!-- Results Section -->
-    <div class="result">
+            <div class="card-header">
+                <div class="icon">🔊</div>
+                <div>
+                    <h2>Text to Voice</h2>
+                    <div class="card-subtitle">
+                        Convert written text into natural speech
+                    </div>
+                </div>
+            </div>
+
+            <textarea
+                id="textInput"
+                class="textarea"
+                placeholder="Type or paste your text here..."></textarea>
+
+            <div class="voice-controls">
+
+                <button class="btn primary" onclick="speakText()">
+                    🔊 Speak
+                </button>
+
+                <button class="btn secondary" onclick="stopSpeech()">
+                    ⏹ Stop
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- RESULTS -->
+
+    <div class="card results">
+
+        <div class="card-header">
+            <div class="icon">📊</div>
+            <div>
+                <h2>Analysis Result</h2>
+                <div class="card-subtitle">
+                    Your transcription and sentiment analysis
+                </div>
+            </div>
+        </div>
 
         {% if transcription %}
-            <h3>📝 Transcription:</h3>
-            <p>{{ transcription }}</p>
+
+        <div class="result-box">
+
+            <div class="result-title">
+                📝 Transcription
+            </div>
+
+            <div class="transcription">
+                {{ transcription }}
+            </div>
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+            Your transcription will appear here after processing.
+        </div>
+
         {% endif %}
 
+
         {% if sentiment %}
-            <h3>📊 Sentiment:</h3>
-            <p class="{{ 'positive' if sentiment.lower().strip() == 'positive' else 'negative' }}">
-    {{ sentiment }}
-</p>
+
+        <div class="result-box">
+
+            <div class="result-title">
+                📊 Sentiment
+            </div>
+
+            <span class="sentiment
+                {% if sentiment.lower().strip() == 'positive' %}
+                    positive
+                {% elif sentiment.lower().strip() == 'negative' %}
+                    negative
+                {% else %}
+                    neutral
+                {% endif %}">
+
+                {{ sentiment }}
+
+            </span>
+
+        </div>
+
         {% endif %}
 
     </div>
 
 </div>
 
+<div class="footer">
+    Voice AI Studio • Powered by Whisper
+</div>
+
+
+<script>
+
+    // -------------------------
+    // DRAG & DROP
+    // -------------------------
+
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const fileName = document.getElementById("fileName");
+
+    dropZone.addEventListener("click", () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener("change", () => {
+
+        if (fileInput.files.length > 0) {
+            fileName.textContent =
+                "Selected: " + fileInput.files[0].name;
+        }
+
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+
+        e.preventDefault();
+
+        dropZone.classList.remove("dragover");
+
+        if (e.dataTransfer.files.length > 0) {
+
+            fileInput.files = e.dataTransfer.files;
+
+            fileName.textContent =
+                "Selected: " + e.dataTransfer.files[0].name;
+
+        }
+
+    });
+
+
+    // -------------------------
+    // MICROPHONE RECORDING
+    // -------------------------
+
+    const recordBtn = document.getElementById("recordBtn");
+    const recordInfo = document.getElementById("recordInfo");
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let recording = false;
+
+    recordBtn.addEventListener("click", async () => {
+
+        if (!recording) {
+
+            try {
+
+                const stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
+
+                audioChunks = [];
+
+                mediaRecorder =
+                    new MediaRecorder(stream);
+
+                mediaRecorder.start();
+
+                recording = true;
+
+                recordBtn.textContent =
+                    "⏹ Stop Recording";
+
+                recordBtn.classList.add("recording");
+
+                recordInfo.textContent =
+                    "🔴 Recording... Speak now";
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+
+                    const audioBlob =
+                        new Blob(audioChunks, {
+                            type: "audio/webm"
+                        });
+
+                    const formData = new FormData();
+
+                    formData.append(
+                        "audio",
+                        audioBlob,
+                        "recording.webm"
+                    );
+
+                    recordInfo.textContent =
+                        "⏳ Processing your recording...";
+
+                    try {
+
+                        const response =
+                            await fetch("/upload", {
+                                method: "POST",
+                                body: formData
+                            });
+
+                        const html =
+                            await response.text();
+
+                        document.open();
+                        document.write(html);
+                        document.close();
+
+                    } catch (error) {
+
+                        recordInfo.textContent =
+                            "❌ Something went wrong.";
+
+                    }
+
+                };
+
+            } catch (error) {
+
+                alert(
+                    "Microphone permission is required to record."
+                );
+
+            }
+
+        } else {
+
+            mediaRecorder.stop();
+
+            mediaRecorder.stream
+                .getTracks()
+                .forEach(track => track.stop());
+
+            recording = false;
+
+            recordBtn.classList.remove("recording");
+
+            recordBtn.textContent =
+                "🎙️ Start Recording";
+
+        }
+
+    });
+
+
+    // -------------------------
+    // TEXT TO SPEECH
+    // -------------------------
+
+    function speakText() {
+
+        const text =
+            document.getElementById("textInput").value.trim();
+
+        if (!text) {
+
+            alert("Please enter some text first.");
+
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        const speech =
+            new SpeechSynthesisUtterance(text);
+
+        speech.rate = 1;
+        speech.pitch = 1;
+
+        window.speechSynthesis.speak(speech);
+
+    }
+
+
+    function stopSpeech() {
+
+        window.speechSynthesis.cancel();
+
+    }
+
+</script>
+
 </body>
 </html>
+```
