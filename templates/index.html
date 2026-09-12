@@ -810,300 +810,299 @@
        UPLOAD AUDIO
     ========================= */
 
-    const uploadForm =
-        document.getElementById("uploadForm");
+   const uploadForm =
+    document.getElementById("uploadForm");
 
+uploadForm.addEventListener(
+    "submit",
+    async function(e) {
 
-    uploadForm.addEventListener(
-        "submit",
-        async function(e) {
+        e.preventDefault();
 
-            e.preventDefault();
+        if (!fileInput.files.length) {
+            alert("Please select an audio file first.");
+            return;
+        }
 
-            if (!fileInput.files.length) {
+        const button =
+            uploadForm.querySelector("button");
 
-                alert("Please select an audio file first.");
+        button.textContent = "⏳ Processing...";
+        button.disabled = true;
 
-                return;
+        const formData = new FormData();
 
+        formData.append(
+            "audio",
+            fileInput.files[0]
+        );
+
+        try {
+
+            const response =
+                await fetch("/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+            const html =
+                await response.text();
+
+            if (!response.ok) {
+                throw new Error(html);
             }
 
+            document.open();
+            document.write(html);
+            document.close();
 
-            const button =
-                uploadForm.querySelector("button");
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Audio processing failed. Please try again."
+            );
 
             button.textContent =
-                "⏳ Processing...";
+                "✨ Upload & Transcribe";
 
-            button.disabled = true;
+            button.disabled = false;
+        }
+    }
+);
 
+
+    /* =========================
+   MICROPHONE RECORDING
+========================= */
+
+const recordBtn =
+    document.getElementById("recordBtn");
+
+const recordInfo =
+    document.getElementById("recordInfo");
+
+let mediaRecorder;
+let audioChunks = [];
+let recording = false;
+
+
+recordBtn.addEventListener(
+    "click",
+    async () => {
+
+        /* START RECORDING */
+
+        if (!recording) {
 
             try {
 
-                const originalFile =
-                    fileInput.files[0];
+                const stream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
 
-                const wavBlob =
-                    await convertToWav(originalFile);
-
-
-                const formData =
-                    new FormData();
-
-                formData.append(
-                    "audio",
-                    wavBlob,
-                    "audio.wav"
-                );
+                audioChunks = [];
 
 
-                const response =
-                    await fetch(
-                        "/upload",
-                        {
-                            method: "POST",
-                            body: formData
-                        }
-                    );
+                // Browser-supported recording format
+                let options = {};
 
+                if (
+                    MediaRecorder.isTypeSupported(
+                        "audio/webm;codecs=opus"
+                    )
+                ) {
+                    options.mimeType =
+                        "audio/webm;codecs=opus";
 
-                const html =
-                    await response.text();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        "Server error"
-                    );
+                } else if (
+                    MediaRecorder.isTypeSupported(
+                        "audio/webm"
+                    )
+                ) {
+                    options.mimeType =
+                        "audio/webm";
 
                 }
 
 
-                document.open();
-
-                document.write(html);
-
-                document.close();
-
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    "Audio processing failed. Please try another audio file."
-                );
-
-                button.textContent =
-                    "✨ Upload & Transcribe";
-
-                button.disabled = false;
-
-            }
-
-        }
-    );
+                mediaRecorder =
+                    new MediaRecorder(
+                        stream,
+                        options
+                    );
 
 
+                mediaRecorder.ondataavailable =
+                    (event) => {
 
-    /* =========================
-       MICROPHONE RECORDING
-    ========================= */
+                        if (event.data.size > 0) {
 
-    const recordBtn =
-        document.getElementById("recordBtn");
+                            audioChunks.push(
+                                event.data
+                            );
 
-    const recordInfo =
-        document.getElementById("recordInfo");
+                        }
 
-
-    let mediaRecorder;
-
-    let audioChunks = [];
-
-    let recording = false;
+                    };
 
 
-    recordBtn.addEventListener(
-        "click",
-        async () => {
+                mediaRecorder.onstop =
+                    async () => {
 
-            if (!recording) {
+                        recordInfo.textContent =
+                            "⏳ Sending recording...";
 
-                try {
 
-                    const stream =
-                        await navigator.mediaDevices.getUserMedia(
-                            {
-                                audio: true
-                            }
+                        const audioBlob =
+                            new Blob(
+                                audioChunks,
+                                {
+                                    type:
+                                        mediaRecorder.mimeType
+                                }
+                            );
+
+
+                        const formData =
+                            new FormData();
+
+
+                        formData.append(
+                            "audio",
+                            audioBlob,
+                            "recording.webm"
                         );
 
 
-                    audioChunks = [];
-
-
-                    mediaRecorder =
-                        new MediaRecorder(stream);
-
-
-                    mediaRecorder.ondataavailable =
-                        event => {
-
-                            if (event.data.size > 0) {
-
-                                audioChunks.push(
-                                    event.data
-                                );
-
-                            }
-
-                        };
-
-
-                    mediaRecorder.onstop =
-                        async () => {
+                        try {
 
                             recordInfo.textContent =
-                                "⏳ Converting recording...";
+                                "⏳ Transcribing...";
 
 
-                            const recordedBlob =
-                                new Blob(
-                                    audioChunks,
+                            const response =
+                                await fetch(
+                                    "/upload",
                                     {
-                                        type:
-                                            mediaRecorder.mimeType
+                                        method: "POST",
+                                        body: formData
                                     }
                                 );
 
 
-                            try {
-
-                                const wavBlob =
-                                    await convertToWav(
-                                        recordedBlob
-                                    );
+                            const html =
+                                await response.text();
 
 
-                                recordInfo.textContent =
-                                    "⏳ Transcribing...";
+                            if (!response.ok) {
 
-
-                                const formData =
-                                    new FormData();
-
-
-                                formData.append(
-                                    "audio",
-                                    wavBlob,
-                                    "recording.wav"
+                                throw new Error(
+                                    html
                                 );
-
-
-                                const response =
-                                    await fetch(
-                                        "/upload",
-                                        {
-                                            method: "POST",
-                                            body: formData
-                                        }
-                                    );
-
-
-                                const html =
-                                    await response.text();
-
-
-                                if (!response.ok) {
-
-                                    throw new Error(
-                                        "Server error"
-                                    );
-
-                                }
-
-
-                                document.open();
-
-                                document.write(html);
-
-                                document.close();
-
-
-                            } catch (error) {
-
-                                console.error(error);
-
-                                recordInfo.textContent =
-                                    "❌ Recording could not be processed.";
 
                             }
 
-                        };
+
+                            document.open();
+
+                            document.write(html);
+
+                            document.close();
 
 
-                    mediaRecorder.start();
+                        } catch (error) {
 
-                    recording = true;
-
-
-                    recordBtn.textContent =
-                        "⏹ Stop Recording";
-
-
-                    recordBtn.classList.add(
-                        "recording"
-                    );
+                            console.error(
+                                "Transcription error:",
+                                error
+                            );
 
 
-                    recordInfo.textContent =
-                        "🔴 Recording... Speak now";
+                            recordInfo.textContent =
+                                "❌ Recording could not be processed.";
+
+                            alert(
+                                "Voice transcription failed. Please try again."
+                            );
+
+                        }
+
+                    };
 
 
-                } catch (error) {
-
-                    console.error(error);
-
-                    alert(
-                        "Please allow microphone access."
-                    );
-
-                }
-
-            } else {
-
-                mediaRecorder.stop();
+                mediaRecorder.start();
 
 
-                mediaRecorder.stream
-                    .getTracks()
-                    .forEach(
-                        track => track.stop()
-                    );
+                recording = true;
 
 
-                recording = false;
+                recordBtn.textContent =
+                    "⏹ Stop Recording";
 
 
-                recordBtn.classList.remove(
+                recordBtn.classList.add(
                     "recording"
                 );
 
 
-                recordBtn.textContent =
-                    "🎙️ Start Recording";
-
-
                 recordInfo.textContent =
-                    "⏳ Processing your recording...";
+                    "🔴 Recording... Speak now";
+
+
+            } catch (error) {
+
+                console.error(
+                    "Microphone error:",
+                    error
+                );
+
+
+                alert(
+                    "Please allow microphone access to use voice recording."
+                );
 
             }
 
-        }
-    );
 
+        }
+
+
+        /* STOP RECORDING */
+
+        else {
+
+            recordInfo.textContent =
+                "⏳ Processing your recording...";
+
+
+            mediaRecorder.stop();
+
+
+            mediaRecorder.stream
+                .getTracks()
+                .forEach(
+                    track => track.stop()
+                );
+
+
+            recording = false;
+
+
+            recordBtn.classList.remove(
+                "recording"
+            );
+
+
+            recordBtn.textContent =
+                "🎙️ Start Recording";
+
+        }
+
+    }
+);
 
 
     /* =========================

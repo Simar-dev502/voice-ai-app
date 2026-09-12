@@ -1,16 +1,17 @@
 from flask import Flask, render_template, request
 import whisper
 import os
-import wave
+import subprocess
+import tempfile
 import numpy as np
 from werkzeug.utils import secure_filename
+import imageio_ffmpeg
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Small model for Render memory
 model = whisper.load_model("tiny")
 
 
@@ -41,29 +42,26 @@ def analyze_sentiment(text):
         return "NEUTRAL"
 
 
-def read_wav_file(filepath):
-    with wave.open(filepath, "rb") as wav:
-        sample_rate = wav.getframerate()
-        channels = wav.getnchannels()
-        sample_width = wav.getsampwidth()
-        frames = wav.readframes(wav.getnframes())
+def convert_audio_to_wav(input_file, output_file):
 
-    if sample_width == 2:
-        audio = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
-        audio /= 32768.0
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
 
-    elif sample_width == 4:
-        audio = np.frombuffer(frames, dtype=np.int32).astype(np.float32)
-        audio /= 2147483648.0
+    command = [
+        ffmpeg,
+        "-y",
+        "-i", input_file,
+        "-ac", "1",
+        "-ar", "16000",
+        "-sample_fmt", "s16",
+        output_file
+    ]
 
-    else:
-        raise ValueError("Unsupported WAV format")
-
-    # Convert stereo to mono
-    if channels > 1:
-        audio = audio.reshape(-1, channels).mean(axis=1)
-
-    return audio
+    subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True
+    )
 
 
 @app.route("/")
@@ -84,23 +82,37 @@ def upload():
 
     filename = secure_filename(file.filename)
 
-    if not filename.lower().endswith(".wav"):
-        return "Please upload a WAV audio file.", 400
+    input_path = os.path.join(
+        UPLOAD_FOLDER,
+        filename
+    )
 
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
+    file.save(input_path)
+
+    wav_path = os.path.join(
+        UPLOAD_FOLDER,
+        "converted_audio.wav"
+    )
 
     try:
-        audio = read_wav_file(filepath)
 
+        # Convert M4A / MP3 / WEBM / WAV etc. to WAV
+        convert_audio_to_wav(
+            input_path,
+            wav_path
+        )
+
+        # Whisper transcription
         result = model.transcribe(
-            audio,
+            wav_path,
             fp16=False
         )
 
         transcription = result["text"].strip()
 
-        sentiment = analyze_sentiment(transcription)
+        sentiment = analyze_sentiment(
+            transcription
+        )
 
         return render_template(
             "index.html",
@@ -109,12 +121,22 @@ def upload():
         )
 
     except Exception as e:
-        print("TRANSCRIPTION ERROR:", e)
-        return "Audio processing failed. Please try again.", 500
+
+        print("AUDIO ERROR:", repr(e))
+
+        return (
+            "Audio processing failed: "
+            + str(e),
+            500
+        )
 
     finally:
-        if os.path.exists(filepath):
-            os.remove(filepath)
+
+        if os.path.exists(input_path):
+            os.remove(input_path)
+
+        if os.path.exists(wav_path):
+            os.remove(wav_path)
 
 
 if __name__ == "__main__":
