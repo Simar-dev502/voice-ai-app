@@ -69,15 +69,6 @@ pip install -r requirements.txt
 ```
 python app.py
 ```
-
-### 4. Open in browser
-
-```
-http://127.0.0.1:5000
-```
-
----
-
 ## 🌐 Deployment
 
 This project is deployed on Render.
@@ -91,7 +82,7 @@ pip install -r requirements.txt
 ### Start Command:
 
 ```
-gunicorn app:app
+gunicorn --bind 0.0.0.0:$PORT app:app
 ```
 
 ---
