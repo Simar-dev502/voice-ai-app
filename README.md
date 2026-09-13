@@ -27,7 +27,7 @@ An AI-powered web application that converts speech into text and performs sentim
 👉 Add your deployed link here after Render deployment:
 
 ```
-https://your-app-name.onrender.com
+https://voice-ai-app-f1mz.onrender.com
 ```
 
 ---
