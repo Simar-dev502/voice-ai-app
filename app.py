@@ -7,17 +7,25 @@ import shutil
 import numpy as np
 from werkzeug.utils import secure_filename
 import imageio_ffmpeg
+import imageio_ffmpeg
+import subprocess
 
 FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
-FFMPEG_DIR = os.path.dirname(FFMPEG_EXE)
-FFMPEG_ALIAS = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
 
-if not os.path.exists(FFMPEG_ALIAS):
-    shutil.copy2(FFMPEG_EXE, FFMPEG_ALIAS)
+print("FFMPEG PATH:", FFMPEG_EXE)
 
-PATH = os.environ.get("PATH", "")
-if FFMPEG_DIR not in PATH.split(os.pathsep):
-    os.environ["PATH"] = FFMPEG_DIR + os.pathsep + PATH
+try:
+    result = subprocess.run(
+        [FFMPEG_EXE, "-version"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    print("FFMPEG TEST:", result.stdout.splitlines()[0])
+except Exception as e:
+    print("FFMPEG ERROR:", repr(e))
+
+
 
 app = Flask(__name__)
 
@@ -52,16 +60,14 @@ def analyze_sentiment(text):
         return "NEGATIVE"
     else:
         return "NEUTRAL"
-
-
 def convert_audio_to_wav(input_file, output_file):
-
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
 
     command = [
         ffmpeg,
         "-y",
         "-i", input_file,
+        "-vn",
         "-ac", "1",
         "-ar", "16000",
         "-sample_fmt", "s16",
@@ -72,8 +78,11 @@ def convert_audio_to_wav(input_file, output_file):
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        text=True,
         check=True
     )
+
+
 
 
 @app.route("/")
