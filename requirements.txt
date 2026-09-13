@@ -1,6 +1,5 @@
 flask
 gunicorn
-deep-translator
 openai-whisper
 numpy
 imageio-ffmpeg

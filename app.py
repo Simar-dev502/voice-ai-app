@@ -4,11 +4,6 @@ import subprocess
 import shutil
 
 try:
-    from deep_translator import GoogleTranslator
-except Exception:
-    GoogleTranslator = None
-
-try:
     import whisper
 except Exception:
     whisper = None
@@ -82,28 +77,6 @@ def analyze_sentiment(text):
     return "NEUTRAL"
 
 
-def translate_text(text, target_language="en"):
-    if not text or GoogleTranslator is None:
-        return None
-
-    target_language = (target_language or "en").strip()
-
-    if target_language.lower() in {"en", "english"}:
-        return None
-
-    try:
-        translated = GoogleTranslator(
-            source="auto",
-            target=target_language
-        ).translate(text)
-
-        return translated.strip() if translated else None
-
-    except Exception as e:
-        print("TRANSLATION ERROR:", repr(e))
-        return None
-
-
 # =========================
 # AUDIO HELPERS
 # =========================
@@ -149,7 +122,6 @@ def analyze():
     data = request.get_json(silent=True) or {}
 
     text = str(data.get("text") or "").strip()
-    target_language = str(data.get("target_language") or "en").strip()
 
     if not text:
         return jsonify({
@@ -157,34 +129,10 @@ def analyze():
         }), 400
 
     sentiment = analyze_sentiment(text)
-    translation = translate_text(text, target_language)
 
     return jsonify({
         "transcription": text,
-        "sentiment": sentiment,
-        "translation": translation
-    })
-
-
-@app.route("/translate", methods=["POST"])
-def translate():
-
-    data = request.get_json(silent=True) or {}
-
-    text = str(data.get("text") or "").strip()
-    target_language = str(data.get("target_language") or "en").strip()
-
-    if not text:
-        return jsonify({
-            "error": "No text to translate"
-        }), 400
-
-    translated = translate_text(text, target_language)
-
-    return jsonify({
-        "transcription": text,
-        "translation": translated,
-        "target_language": target_language
+        "sentiment": sentiment
     })
 
 
@@ -203,7 +151,6 @@ def upload():
     if file.filename == "":
         return "No audio file selected", 400
 
-    target_language = request.form.get("target_language", "en")
     filename = secure_filename(file.filename)
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     wav_path = os.path.join(UPLOAD_FOLDER, "converted_audio.wav")
@@ -219,15 +166,11 @@ def upload():
         result = model.transcribe(wav_path, fp16=False)
         transcription = result["text"].strip()
         sentiment = analyze_sentiment(transcription)
-        translation = translate_text(transcription, target_language)
 
-        return render_template(
-            "index.html",
-            transcription=transcription,
-            sentiment=sentiment,
-            translation=translation,
-            target_language=target_language
-        )
+        return jsonify({
+            "transcription": transcription,
+            "sentiment": sentiment
+        })
 
     except Exception as e:
         print("AUDIO ERROR:", repr(e))
