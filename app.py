@@ -3,9 +3,21 @@ import whisper
 import os
 import subprocess
 import tempfile
+import shutil
 import numpy as np
 from werkzeug.utils import secure_filename
 import imageio_ffmpeg
+
+FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
+FFMPEG_DIR = os.path.dirname(FFMPEG_EXE)
+FFMPEG_ALIAS = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
+
+if not os.path.exists(FFMPEG_ALIAS):
+    shutil.copy2(FFMPEG_EXE, FFMPEG_ALIAS)
+
+PATH = os.environ.get("PATH", "")
+if FFMPEG_DIR not in PATH.split(os.pathsep):
+    os.environ["PATH"] = FFMPEG_DIR + os.pathsep + PATH
 
 app = Flask(__name__)
 
