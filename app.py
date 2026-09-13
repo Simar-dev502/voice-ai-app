@@ -1,38 +1,62 @@
 from flask import Flask, render_template, request
-import whisper
+from werkzeug.utils import secure_filename
 import os
 import subprocess
 import tempfile
-import shutil
-import numpy as np
-from werkzeug.utils import secure_filename
 import imageio_ffmpeg
-import imageio_ffmpeg
-import subprocess
 
 FFMPEG_EXE = imageio_ffmpeg.get_ffmpeg_exe()
+FFMPEG_DIR = os.path.dirname(FFMPEG_EXE)
+FFMPEG_ALIAS = os.path.join(FFMPEG_DIR, "ffmpeg.exe")
 
-print("FFMPEG PATH:", FFMPEG_EXE)
+if not os.path.exists(FFMPEG_ALIAS):
+    shutil.copy2(FFMPEG_EXE, FFMPEG_ALIAS)
 
-try:
-    result = subprocess.run(
-        [FFMPEG_EXE, "-version"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    print("FFMPEG TEST:", result.stdout.splitlines()[0])
-except Exception as e:
-    print("FFMPEG ERROR:", repr(e))
-
-
+PATH = os.environ.get("PATH", "")
+if FFMPEG_DIR not in PATH.split(os.pathsep):
+    os.environ["PATH"] = FFMPEG_DIR + os.pathsep + PATH
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-model = whisper.load_model("tiny")
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+
+def convert_audio_to_wav(input_file, output_file):
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+
+    command = [
+        ffmpeg,
+        "-y",
+        "-i", input_file,
+        "-vn",
+        "-ac", "1",
+        "-ar", "16000",
+        "-sample_fmt", "s16",
+        output_file
+    ]
+
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise Exception("FFmpeg error: " + result.stderr[-1500:])
+
+
+def transcribe_audio(audio_path):
+    with open(audio_path, "rb") as audio_file:
+        result = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file
+        )
+
+    return result.text.strip()
 
 
 POSITIVE_WORDS = {
@@ -51,8 +75,15 @@ NEGATIVE_WORDS = {
 def analyze_sentiment(text):
     words = text.lower().split()
 
-    positive_score = sum(word in POSITIVE_WORDS for word in words)
-    negative_score = sum(word in NEGATIVE_WORDS for word in words)
+    positive_score = sum(
+        word.strip(".,!?") in POSITIVE_WORDS
+        for word in words
+    )
+
+    negative_score = sum(
+        word.strip(".,!?") in NEGATIVE_WORDS
+        for word in words
+    )
 
     if positive_score > negative_score:
         return "POSITIVE"
@@ -60,14 +91,16 @@ def analyze_sentiment(text):
         return "NEGATIVE"
     else:
         return "NEUTRAL"
+
+
 def convert_audio_to_wav(input_file, output_file):
+
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
 
     command = [
         ffmpeg,
         "-y",
         "-i", input_file,
-        "-vn",
         "-ac", "1",
         "-ar", "16000",
         "-sample_fmt", "s16",
@@ -78,11 +111,8 @@ def convert_audio_to_wav(input_file, output_file):
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
         check=True
     )
-
-
 
 
 @app.route("/")
@@ -101,6 +131,9 @@ def upload():
     if file.filename == "":
         return "No audio file selected", 400
 
+    if not os.environ.get("OPENAI_API_KEY"):
+        return "OPENAI_API_KEY is not configured on Render", 500
+
     filename = secure_filename(file.filename)
 
     input_path = os.path.join(
@@ -108,28 +141,28 @@ def upload():
         filename
     )
 
-    file.save(input_path)
-
     wav_path = os.path.join(
         UPLOAD_FOLDER,
         "converted_audio.wav"
     )
 
     try:
+        file.save(input_path)
 
-        # Convert M4A / MP3 / WEBM / WAV etc. to WAV
+        print("AUDIO RECEIVED:", filename)
+
         convert_audio_to_wav(
             input_path,
             wav_path
         )
 
-        # Whisper transcription
-        result = model.transcribe(
-            wav_path,
-            fp16=False
+        print("AUDIO CONVERTED")
+
+        transcription = transcribe_audio(
+            wav_path
         )
 
-        transcription = result["text"].strip()
+        print("TRANSCRIPTION:", transcription)
 
         sentiment = analyze_sentiment(
             transcription
@@ -147,9 +180,8 @@ def upload():
 
         return (
             "Audio processing failed: "
-            + str(e),
-            500
-        )
+            + str(e)
+        ), 500
 
     finally:
 
@@ -161,9 +193,7 @@ def upload():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
     app.run(
         host="0.0.0.0",
-        port=port,
-        debug=False
+        port=int(os.environ.get("PORT", 5000))
     )
