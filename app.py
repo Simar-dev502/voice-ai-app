@@ -1,51 +1,11 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 import os
-import subprocess
-import imageio_ffmpeg
-from openai import OpenAI
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
-
-def convert_audio_to_wav(input_file, output_file):
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-
-    command = [
-        ffmpeg,
-        "-y",
-        "-i", input_file,
-        "-vn",
-        "-ac", "1",
-        "-ar", "16000",
-        "-sample_fmt", "s16",
-        output_file
-    ]
-
-    result = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    if result.returncode != 0:
-        raise Exception("FFmpeg error: " + result.stderr[-1500:])
-
-
-def transcribe_audio(audio_path):
-    with open(audio_path, "rb") as audio_file:
-        result = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file
-        )
-
-    return result.text.strip()
 
 
 POSITIVE_WORDS = {
@@ -84,9 +44,32 @@ def analyze_sentiment(text):
 
 @app.route("/")
 def home():
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
+
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+
+    data = request.get_json()
+
+    if not data or "text" not in data:
+        return jsonify({
+            "error": "No text received"
+        }), 400
+
+    text = data["text"].strip()
+
+    if not text:
+        return jsonify({
+            "error": "No transcription text"
+        }), 400
+
+    sentiment = analyze_sentiment(text)
+
+    return jsonify({
+        "transcription": text,
+        "sentiment": sentiment
+    })
 
 
 @app.route("/upload", methods=["POST"])
@@ -100,9 +83,6 @@ def upload():
     if file.filename == "":
         return "No audio file selected", 400
 
-    if not os.environ.get("OPENAI_API_KEY"):
-        return "OPENAI_API_KEY is not configured on Render", 500
-
     filename = secure_filename(file.filename)
 
     input_path = os.path.join(
@@ -110,55 +90,21 @@ def upload():
         filename
     )
 
-    wav_path = os.path.join(
-        UPLOAD_FOLDER,
-        "converted_audio.wav"
-    )
-
     try:
         file.save(input_path)
 
-        print("AUDIO RECEIVED:", filename)
-
-        convert_audio_to_wav(
-            input_path,
-            wav_path
-        )
-
-        print("AUDIO CONVERTED")
-
-        transcription = transcribe_audio(
-            wav_path
-        )
-
-        print("TRANSCRIPTION:", transcription)
-
-        sentiment = analyze_sentiment(
-            transcription
-        )
-
-        return render_template(
-            "index.html",
-            transcription=transcription,
-            sentiment=sentiment
+        return (
+            "Audio uploaded successfully. "
+            "For free transcription, please use the microphone option."
         )
 
     except Exception as e:
-
-        print("AUDIO ERROR:", repr(e))
-
-        return (
-            "Audio processing failed: "
-            + str(e)
-        ), 500
+        print("UPLOAD ERROR:", repr(e))
+        return "Audio upload failed: " + str(e), 500
 
     finally:
-
         if os.path.exists(input_path):
             os.remove(input_path)
-
-        if os.path.exists(wav_path):
-            os.remove(wav_path)
 
 
 if __name__ == "__main__":
